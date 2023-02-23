@@ -49,16 +49,16 @@ io.on('connection', (socket) => {
             io.emit('client', false)
         } 
     }) 
+    socket.on('logger', data => {
+        io.emit('data', data)
+        logger.temp = data.temp
+        logger.waterTemp = data.waterTemp
+        logger.tds = data.tds
+        logger.hum = data.hum
+        logger.date = new Date()
+        io.emit('client', true)
+    })
 });
-io.on('logger', data => {
-    io.emit('data', data)
-    logger.temp = data.temp
-    logger.waterTemp = data.waterTemp
-    logger.tds = data.tds
-    logger.hum = data.hum
-    logger.date = new Date()
-    io.emit('client', true)
-})
 
 setInterval(() => {
     const time = new Date()
