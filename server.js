@@ -10,7 +10,6 @@ app.use(express.json())
 process.env.TZ = 'Asia/Jakarta'
 const sqlite3 = require('sqlite3').verbose()
 let client = false
-let web = false
 let sql;
 
 const db = new sqlite3.Database('./logger.db', sqlite3.OPEN_READWRITE, (err) => {
@@ -43,29 +42,23 @@ io.on('connection', (socket) => {
     if(token != 'web') {
         io.emit('client', true)
         client = true
-    } else {
-        web = true
-    }
+    } 
     socket.on('disconnect', () => {
         if(token != 'web') {
             client = false
             io.emit('client', false)
-        } else {
-            web = false
-        }
+        } 
     }) 
-    socket.on('logger', data => {
-        if(web) {
-            io.emit('data', data)
-        }
-        logger.temp = data.temp
-        logger.waterTemp = data.waterTemp
-        logger.tds = data.tds
-        logger.hum = data.hum
-        logger.date = new Date()
-        io.emit('client', true)
-    })
 });
+io.on('logger', data => {
+    io.emit('data', data)
+    logger.temp = data.temp
+    logger.waterTemp = data.waterTemp
+    logger.tds = data.tds
+    logger.hum = data.hum
+    logger.date = new Date()
+    io.emit('client', true)
+})
 
 setInterval(() => {
     const time = new Date()
