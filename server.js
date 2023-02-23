@@ -7,9 +7,10 @@ const {Server} = require('socket.io');
 const excel = require('exceljs')
 app.use(cors())
 app.use(express.json())
-
+process.env.TZ = 'Asia/Jakarta'
 const sqlite3 = require('sqlite3').verbose()
 let client = false
+let web = false
 let sql;
 
 const db = new sqlite3.Database('./logger.db', sqlite3.OPEN_READWRITE, (err) => {
@@ -42,15 +43,21 @@ io.on('connection', (socket) => {
     if(token != 'web') {
         io.emit('client', true)
         client = true
+    } else {
+        web = true
     }
     socket.on('disconnect', () => {
         if(token != 'web') {
             client = false
             io.emit('client', false)
+        } else {
+            web = false
         }
     }) 
     socket.on('logger', data => {
-        io.emit('data', data)
+        if(web) {
+            io.emit('data', data)
+        }
         logger.temp = data.temp
         logger.waterTemp = data.waterTemp
         logger.tds = data.tds
@@ -219,6 +226,39 @@ app.get('/download', (req, res) => {
         );
         await workbook.xlsx.write(res);
 		res.status(200).end();
+    })
+})
+
+app.get('/statistik', (req, res) => {
+    const date = req.query.date;
+	const label = req.query.label;
+    if(label == 'Hari ini') {
+        sql = `SELECT * FROM logger WHERE date(created_at) = '${date}' ORDER BY id DESC`
+    }
+    if(label == 'Kemarin') {
+        sql = `SELECT * FROM logger WHERE date(created_at) = date('${date}','-1 day')  ORDER BY id DESC`
+    }
+    if(label == '7 Hari terakhir') {
+        sql = `SELECT * FROM logger WHERE date(created_at) > date('${date}','-8 day')  ORDER BY id DESC`
+    }
+    if(label == '30 Hari terakhir') {
+        sql = `SELECT * FROM logger WHERE date(created_at) > date('${date}','-31 day')  ORDER BY id DESC`
+    }
+    if(label == 'Bulan ini') {
+        sql = `SELECT * FROM logger WHERE strftime('%Y-%m',created_at) = '${date}'  ORDER BY id DESC`
+    }
+    if(label == 'Per Hari') {
+        sql = `SELECT * FROM logger WHERE strftime('%Y-%m-%d',created_at) = '${date}'  ORDER BY id DESC`
+    }
+    if(label == 'Per Bulan') {
+        sql = `SELECT * FROM logger WHERE strftime('%Y-%m',created_at) = '${date}'  ORDER BY id DESC`
+    }
+    if(label == 'Per Tahun') {
+        sql = `SELECT * FROM logger WHERE strftime('%Y',created_at) = '${date}'  ORDER BY id DESC`
+    }
+    db.all(sql, (err, row) => {
+        if(err) return res.status(400).send(err.message)
+        res.status(200).json(row)
     })
 })
 
